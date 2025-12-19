@@ -1,0 +1,457 @@
+
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <title>応援設定ツール（売れ筋＋メーカー＋既存機能）</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans JP", "Hiragino Kaku Gothic ProN", "Yu Gothic", "MS Gothic", sans-serif; line-height: 1.6; padding: 16px; }
+    h1 { margin-bottom: 0.25rem; }
+    small { color: #666; }
+    fieldset { border: 1px solid #ccc; padding: 12px; margin-bottom: 16px; }
+    legend { padding: 0 6px; font-weight: bold; }
+    .row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin: 6px 0; }
+    select, input[type="text"], textarea { padding: 6px; }
+    .hidden { display: none; }
+    .btn { padding: 6px 10px; border: 1px solid #888; background: #f5f5f5; cursor: pointer; border-radius: 4px; }
+    .btn:hover { background: #eee; }
+    .danger { color: #a00; border-color: #a00; }
+    .controls { display: flex; gap: 8px; flex-wrap: wrap; margin: 12px 0; }
+    .output { white-space: pre-wrap; border: 1px solid #ddd; padding: 12px; border-radius: 6px; background: #fafafa; }
+    .mono { font-family: "MS Gothic", "Noto Sans Mono CJK JP", monospace; }
+    .note { color:#555; font-size: 0.9em; }
+    .inline-note { color:#666; font-size: 0.85em; }
+  </style>
+</head>
+<body>
+  <h1>応援設定ツール</h1>
+  <small>GitHub Pages 用（请重命名为 <code>index.html</code> 并置于仓库根目录）</small>
+
+  <!-- 応援日 + 居中开关（保留你的版式与逻辑） -->
+  <fieldset>
+    <legend>応援日（版式保持）</legend>
+    <div class="row">
+      <label for="date">日付：</label>
+      <input type="date" id="date" />
+      <label class="inline-note"><input type="checkbox" id="centerLine" /> 応援日行を中央寄せ（左右追加全角空格，不改变原有空格数量）</label>
+    </div>
+    <div class="note">输出规则：<br>
+      ・「応援日：」后仍为 全角×5 +「月」、全角×5 +「日」、全角×1。<br>
+      ・括号内：选了日期则直接插入「（金）」；未选日期显示「（　　）」。<br>
+      ・居中开关：在左右额外追加全角空格以视觉居中，不改变原有空格布局。</div>
+  </fieldset>
+
+  <!-- 既存：①・② 类目（自社／他社）各 5 下拉 + 手入力 -->
+  <fieldset>
+    <legend>カテゴリ（既存ルール）</legend>
+    <div class="row"><strong>自社（5枠）：</strong><span class="inline-note">選択肢：／、クレーンゲーム、ボール、遊具、粘土、パッド、手入力</span></div>
+    <div id="catSelf"></div>
+    <div class="row"><strong>他社（5枠）：</strong><span class="inline-note">同上</span></div>
+    <div id="catOther"></div>
+    <div class="note">「手入力」选中时显示邻接输入框；输出时，将有效项合并到一行，用「、」连接（选「／」则不输出）。</div>
+  </fieldset>
+
+  <!-- 新增：① 特に売れていた商品（自社） -->
+  <fieldset>
+    <legend>① 特に売れていた商品（自社）</legend>
+    <div id="popularSelf"></div>
+    <div class="controls">
+      <button class="btn" id="addPopularSelf">＋ 行を追加</button>
+    </div>
+    <div class="note">每行：商品名（下拉，含「手入力」「／」）＋ 数量（1–20）。输出示例：<code>ねんDOシリーズ商品 × 2</code>；多项用「、」连接。</div>
+  </fieldset>
+
+  <!-- 新增：② 特に売れていた商品（他社） -->
+  <fieldset>
+    <legend>② 特に売れていた商品（他社）</legend>
+    <div id="popularOther"></div>
+    <div class="controls">
+      <button class="btn" id="addPopularOther">＋ 行を追加</button>
+    </div>
+    <div class="note">默认选项包含：<br>
+      ・リモコンでおさんぽキャンキャントイプー（IWAYA）<br>
+      ・たまごっち(バンダイ)<br>
+      ・スノーアットホームシリーズ(AOZORA)(売上実績約 97,000円)<br>
+      同样支持「手入力」「／」。数量为 1–20；多项用「、」连接。</div>
+  </fieldset>
+
+  <!-- ③ 時間帯 ＋ ④ 人数（成对输出） -->
+  <fieldset>
+    <legend>③ ピークの時間帯 ＋ ④ ピーク時のレジ列人数（おおよそ）</legend>
+    <div class="row">
+      <label>時間帯：</label>
+      <select id="peakTime"></select>
+      <label>人数：</label>
+      <select id="peakPeople"></select>
+    </div>
+    <div class="note">仅当两者都为有效值（非「／」）时输出：<code>14:00–15:00：3名程度</code>。</div>
+  </fieldset>
+
+  <!-- 新增：⑤ 他応援メーカー（多行：メーカー名 + 人数） -->
+  <fieldset>
+    <legend>⑤ 他応援メーカー</legend>
+    <div id="otherMakers"></div>
+    <div class="controls">
+      <button class="btn" id="addMakerRow">＋ 行を追加</button>
+    </div>
+    <div class="note">默认包含：カワダ、AOZORA社、BRIO、IWAYA、stiefff、バンダイ、タカラトミー；人数 0–10。输出示例：<code>カワダ：3名、AOZORA社：2名 ...</code></div>
+  </fieldset>
+
+  <!-- 既存：応援者（复选） -->
+  <fieldset>
+    <legend>応援者（複数選択）</legend>
+    <label><input type="checkbox" name="supporters" value="陳" /> 陳</label>
+    <label><input type="checkbox" name="supporters" value="李" /> 李</label>
+    <div class="note">输出：<code>応援者：陳、李</code>（未选择则该行不输出）。</div>
+  </fieldset>
+
+  <!-- 新增：⑥ 応援者所感 -->
+  <fieldset>
+    <legend>⑥ 応援者所感</legend>
+    <textarea id="remarks" rows="10" style="width:100%;" placeholder="例：担当エリア、客層・環境、来店状況、購買傾向、スタッフ共有情報、売場状況などを記載..."></textarea>
+    <div class="note">支持多行，输出时原样保留换行。</div>
+  </fieldset>
+
+  <!-- 生成 / 复制 / 下载 -->
+  <div class="controls">
+    <button class="btn" id="btnGenerate">生成</button>
+    <button class="btn" id="btnCopy">コピー</button>
+    <button class="btn" id="btnTxt">TXT ダウンロード</button>
+    <button class="btn" id="btnCsv">CSV ダウンロード</button>
+  </div>
+
+  <!-- 输出 -->
+  <pre id="output" class="output mono"></pre>
+
+  <script>
+    // ====== 常量与选项 ======
+    const FW_SPACE = "　"; // 全角空格
+    const CATEGORY_OPTIONS = ["／","クレーンゲーム","ボール","遊具","粘土","パッド","手入力"];
+
+    // 时间帯选项（含「／」与常用时段；可按需追加/调整）
+    const TIME_OPTIONS = ["／","10:00–11:00","11:00–12:00","12:00–13:00","13:00–14:00","14:00–15:00","15:00–16:00","16:00–17:00"];
+
+    // 人数选项（间隔 5，5–55；含「／」）
+    const PEOPLE_OPTIONS = ["／", ...Array.from({length:11}, (_,i)=> String((i+1)*5))];
+
+    // 商品数量（1–20）
+    const COUNT_ITEMS = [...Array.from({length:20}, (_,i)=> String(i+1))];
+
+    // 自社 热卖商品默认（含手入力／）
+    const POPULAR_SELF_OPTIONS = ["ねんDOシリーズ商品","手入力","／"];
+
+    // 他社 热卖商品默认（含手入力／）
+    const POPULAR_OTHER_OPTIONS = [
+      "リモコンでおさんぽキャンキャントイプー（IWAYA）",
+      "たまごっち(バンダイ)",
+      "スノーアットホームシリーズ(AOZORA)(売上実績約 97,000円)",
+      "手入力","／"
+    ];
+
+    // 他応援メーカー 默认（含手入力／）
+    const MAKERS_OPTIONS = ["カワダ","AOZORA社","BRIO","IWAYA","stiefff","バンダイ","タカラトミー","手入力","／"];
+
+    // ====== 初始化：カテゴリ（自社／他社）5枠 × 2 ======
+    function buildCategoryBlock(container) {
+      container.innerHTML = "";
+      for (let i=0; i<5; i++) {
+        const row = document.createElement("div");
+        row.className = "row";
+        const sel = document.createElement("select");
+        CATEGORY_OPTIONS.forEach(opt => {
+          const o = document.createElement("option");
+          o.value = opt; o.textContent = opt;
+          sel.appendChild(o);
+        });
+        const input = document.createElement("input");
+        input.type = "text";
+        input.placeholder = "手入力";
+        input.className = "hidden";
+        sel.addEventListener("change", () => {
+          if (sel.value === "手入力") {
+            input.classList.remove("hidden");
+          } else {
+            input.classList.add("hidden");
+            input.value = "";
+          }
+        });
+        row.appendChild(sel);
+        row.appendChild(input);
+        container.appendChild(row);
+      }
+    }
+
+    buildCategoryBlock(document.getElementById("catSelf"));
+    buildCategoryBlock(document.getElementById("catOther"));
+
+    // ====== 初始化：③ 时间帯 ＋ ④ 人数 ======
+    const peakTimeSel = document.getElementById("peakTime");
+    const peakPeopleSel = document.getElementById("peakPeople");
+
+    TIME_OPTIONS.forEach(opt => {
+      const o = document.createElement("option");
+      o.value = opt; o.textContent = opt;
+      peakTimeSel.appendChild(o);
+    });
+    PEOPLE_OPTIONS.forEach(opt => {
+      const o = document.createElement("option");
+      o.value = opt; o.textContent = opt;
+      peakPeopleSel.appendChild(o);
+    });
+
+    // 默认值（可改）
+    peakTimeSel.value = "14:00–15:00";
+    peakPeopleSel.value = "3"; // 你示例是「３名」，这里默认半角 "3"
+
+    // ====== 通用：行生成（商品/メーカー） ======
+    function makeNameCountRow(nameOptions, countOptions, sectionIdPrefix) {
+      const row = document.createElement("div");
+      row.className = "row";
+      // 名称下拉
+      const nameSel = document.createElement("select");
+      nameOptions.forEach(opt => {
+        const o = document.createElement("option");
+        o.value = opt; o.textContent = opt;
+        nameSel.appendChild(o);
+      });
+      // 手入力
+      const nameInput = document.createElement("input");
+      nameInput.type = "text";
+      nameInput.placeholder = "手入力";
+      nameInput.className = "hidden";
+
+      nameSel.addEventListener("change", () => {
+        if (nameSel.value === "手入力") {
+          nameInput.classList.remove("hidden");
+        } else {
+          nameInput.classList.add("hidden");
+          nameInput.value = "";
+        }
+      });
+
+      // 数量下拉
+      const countSel = document.createElement("select");
+      countOptions.forEach(opt => {
+        const o = document.createElement("option");
+        o.value = opt; o.textContent = opt;
+        countSel.appendChild(o);
+      });
+
+      // 删除按钮
+      const delBtn = document.createElement("button");
+      delBtn.className = "btn danger";
+      delBtn.textContent = "－ 削除";
+      delBtn.addEventListener("click", () => row.remove());
+
+      row.appendChild(nameSel);
+      row.appendChild(nameInput);
+      row.appendChild(countSel);
+      row.appendChild(delBtn);
+      return row;
+    }
+
+    // ====== ① 自社 热卖商品 ======
+    const popularSelfBox = document.getElementById("popularSelf");
+    function addPopularSelfRow() {
+      popularSelfBox.appendChild(makeNameCountRow(POPULAR_SELF_OPTIONS, COUNT_ITEMS, "popularSelf"));
+    }
+    document.getElementById("addPopularSelf").addEventListener("click", addPopularSelfRow);
+    // 默认添加 1 行（内容示例：ねんDOシリーズ商品 × 1）
+    addPopularSelfRow();
+
+    // ====== ② 他社 热卖商品 ======
+    const popularOtherBox = document.getElementById("popularOther");
+    function addPopularOtherRow() {
+      popularOtherBox.appendChild(makeNameCountRow(POPULAR_OTHER_OPTIONS, COUNT_ITEMS, "popularOther"));
+    }
+    document.getElementById("addPopularOther").addEventListener("click", addPopularOtherRow);
+    // 默认添加 3 行，预选为你给出的三款
+    for (let i=0;i<3;i++) addPopularOtherRow();
+    // 将默认三行预选为指定项（安全判断避免越界）
+    const otherRows = popularOtherBox.querySelectorAll(".row");
+    if (otherRows.length >= 3) {
+      otherRows[0].querySelector("select").value = POPULAR_OTHER_OPTIONS[0];
+      otherRows[1].querySelector("select").value = POPULAR_OTHER_OPTIONS[1];
+      otherRows[2].querySelector("select").value = POPULAR_OTHER_OPTIONS[2];
+    }
+
+    // ====== ⑤ 他応援メーカー ======
+    const makersBox = document.getElementById("otherMakers");
+    function addMakerRow() {
+      // 人数 0–10
+      const makerCounts = [...Array.from({length:11}, (_,i)=> String(i))];
+      makersBox.appendChild(makeNameCountRow(MAKERS_OPTIONS, makerCounts, "makers"));
+    }
+    document.getElementById("addMakerRow").addEventListener("click", addMakerRow);
+    // 默认生成 7 行并预选
+    const defaultMakers = ["カワダ","AOZORA社","BRIO","IWAYA","stiefff","バンダイ","タカラトミー"];
+    defaultMakers.forEach(()=> addMakerRow());
+    const makerRows = makersBox.querySelectorAll(".row");
+    defaultMakers.forEach((mk, idx) => {
+      const row = makerRows[idx];
+      if (!row) return;
+      // 名称
+      const selName = row.querySelectorAll("select")[0];
+      selName.value = mk;
+      // 人数（按你示例：3,2,1,1,1,0,0）
+      const selCount = row.querySelectorAll("select")[1];
+      const preset = [3,2,1,1,1,0,0][idx];
+      selCount.value = String(preset);
+    });
+
+    // ====== 既存：応援者复选 ======
+    function getSupportersText() {
+      const checked = [...document.querySelectorAll('input[name="supporters"]:checked')].map(i=> i.value);
+      return checked.length ? `応援者：${checked.join("、")}` : "";
+    }
+
+    // ====== 応援日行（保持版式） ======
+    function buildDateLine() {
+      const date = document.getElementById("date").value;
+      const center = document.getElementById("centerLine").checked;
+      // 固定版式：応援日： + 全角×5 + 月 + 全角×5 + 日 + 全角×1
+      let line = `応援日：${FW_SPACE.repeat(5)}月${FW_SPACE.repeat(5)}日${FW_SPACE.repeat(1)}`;
+      // 括号：选中日期则直接「（金）」；否则「（　　）」
+      line += date ? "（金）" : "（　　）";
+      // 视觉居中：左右各追加 5 个全角空格（不改变原本的空格数量）
+      if (center) {
+        line = `${FW_SPACE.repeat(5)}${line}${FW_SPACE.repeat(5)}`;
+      }
+      return line;
+    }
+
+    // ====== 既存：カテゴリ输出（合并为一行，用「、」连接） ======
+    function collectCategories(container) {
+      const items = [];
+      container.querySelectorAll(".row").forEach(row => {
+        const sel = row.querySelector("select");
+        const val = sel.value;
+        if (val === "／") return;
+        if (val === "手入力") {
+          const input = row.querySelector('input[type="text"]');
+          if (input && input.value.trim()) items.push(input.value.trim());
+        } else {
+          items.push(val);
+        }
+      });
+      return items;
+    }
+
+    // ====== 通用：收集（名称＋数量）行 ======
+    function collectNameCount(container, productMode=false) {
+      // productMode=true => 输出格式「名称 × N」
+      // productMode=false => 输出格式「名称：N名」
+      const out = [];
+      container.querySelectorAll(".row").forEach(row => {
+        const sels = row.querySelectorAll("select");
+        const nameSel = sels[0], countSel = sels[1];
+        let name = nameSel.value;
+        if (name === "／") return; // 不输出
+        if (name === "手入力") {
+          const input = row.querySelector('input[type="text"]');
+          if (!input || !input.value.trim()) return; // 未填则不输出该行
+          name = input.value.trim();
+        }
+        const count = countSel.value;
+        if (!count) return;
+        if (productMode) {
+          out.push(`${name} × ${count}`);
+        } else {
+          out.push(`${name}：${count}名`);
+        }
+      });
+      return out;
+    }
+
+    // ====== 生成文本 ======
+    function generateText() {
+      const lines = [];
+
+      // 1) 応援日行
+      lines.push(buildDateLine());
+
+      // 2) 既存：カテゴリ（自社／他社）
+      const selfCats = collectCategories(document.getElementById("catSelf"));
+      const otherCats = collectCategories(document.getElementById("catOther"));
+      if (selfCats.length) lines.push(`自社：${selfCats.join("、")}`);
+      if (otherCats.length) lines.push(`他社：${otherCats.join("、")}`);
+
+      // 3) 新增：① 特に売れていた商品（自社）
+      const popularSelf = collectNameCount(document.getElementById("popularSelf"), true);
+      if (popularSelf.length) lines.push(`①特に売れていた商品（自社）　${popularSelf.join("、")}`);
+
+      // 4) 新增：② 特に売れていた商品（他社）
+      const popularOther = collectNameCount(document.getElementById("popularOther"), true);
+      if (popularOther.length) lines.push(`②特に売れていた商品（他社）　${popularOther.join("、")}`);
+
+      // 5) ③ ピークの時間帯
+      const t = peakTimeSel.value, p = peakPeopleSel.value;
+      if (t && t !== "／") lines.push(`③ピークの時間帯　${t}`);
+
+      // 6) ④ ピーク時のレジ列人数（おおよそ） ※成对输出
+      if (t && t !== "／" && p && p !== "／") {
+        // 你示例用了全角数字「３」，如需强制全角可改造这里
+        lines.push(`④ピーク時のレジ列人数（おおよそ）　${t}：${p}名程度`);
+      }
+
+      // 7) 新增：⑤ 他応援メーカー
+      const makers = collectNameCount(document.getElementById("otherMakers"), false);
+      if (makers.length) lines.push(`⑤他応援メーカー　${makers.join("、")}`);
+
+      // 8) 既存：応援者（复选）
+      const supporters = getSupportersText();
+      if (supporters) lines.push(supporters);
+
+      // 9) 新增：⑥ 応援者所感（多行）
+      const remarks = document.getElementById("remarks").value;
+      if (remarks.trim()) {
+        lines.push(`⑥応援者所感`);
+        lines.push(remarks.trim());
+      }
+
+      return lines.join("\n");
+    }
+
+    // ====== 事件：生成 / 复制 / 下载 ======
+    const outputEl = document.getElementById("output");
+    document.getElementById("btnGenerate").addEventListener("click", () => {
+      outputEl.textContent = generateText();
+    });
+
+    document.getElementById("btnCopy").addEventListener("click", async () => {
+      const text = outputEl.textContent || generateText();
+      try {
+        await navigator.clipboard.writeText(text);
+        alert("コピーしました。");
+      } catch (e) {
+        alert("クリップボードへのコピーに失敗しました。");
+      }
+    });
+
+    function downloadFile(filename, content, mime) {
+      const blob = new Blob([content], { type: mime });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url; a.download = filename;
+      document.body.appendChild(a); a.click();
+      a.remove(); URL.revokeObjectURL(url);
+    }
+
+    document.getElementById("btnTxt").addEventListener("click", () => {
+      const text = outputEl.textContent || generateText();
+      downloadFile("output.txt", text, "text/plain;charset=utf-8");
+    });
+
+    // CSV：全文放入单个单元格（保持换行与全角空格）
+    document.getElementById("btnCsv").addEventListener("click", () => {
+      const text = outputEl.textContent || generateText();
+      const oneCell = `"${text.replace(/"/g, '""')}"`; // 内部引号转义为 ""
+      downloadFile("output.csv", oneCell, "text/csv;charset=utf-8");
+    });
+
+    // 初次渲染输出
+    outputEl.textContent = generateText();
+  </script>
+</body>
+</html>

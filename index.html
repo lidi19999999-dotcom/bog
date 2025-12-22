@@ -1,0 +1,517 @@
+
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+  <title>bog報告用（モバイル安定版・統合版）</title>
+  <style>
+    :root{ --bg:#0f172a; --card:#111827; --line:#1f2937; --accent:#2563eb; --text:#e5e7eb; --muted:#94a3b8; }
+    *{ box-sizing:border-box; }
+    body{ margin:0; font-family: -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Hiragino Sans","Noto Sans JP","Yu Gothic UI","Microsoft YaHei","PingFang SC",sans-serif; background:linear-gradient(180deg,#0f172a,#0b1229); color:var(--text); }
+    header{ position:sticky; top:0; padding:16px; background:rgba(15,23,42,.85); backdrop-filter:blur(8px); border-bottom:1px solid var(--line); z-index:10; }
+    h1{ margin:0; font-size:18px; }
+    main{ padding:16px; display:grid; gap:16px; grid-template-columns: 1fr; max-width:860px; margin:0 auto; }
+    .card{ background:var(--card); border:1px solid var(--line); border-radius:12px; padding:12px; }
+    .field{ display:flex; flex-direction:column; gap:6px; margin-bottom:12px; }
+    label{ font-size:12px; color:var(--muted); }
+    input,select,textarea{ width:100%; background:#0b1220; color:var(--text); border:1px solid var(--line); border-radius:10px; padding:12px; font-size:16px; }
+    select{ -webkit-appearance:none; appearance:none; }
+    textarea{ min-height:100px; }
+    .grid2{ display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+    .grid3{ display:grid; grid-template-columns:1fr 1fr 1fr; gap:12px; }
+    @media (max-width:600px){ .grid2,.grid3{ grid-template-columns:1fr; } }
+    .checkgroup{ display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+    .btns{ position:sticky; bottom:0; background:rgba(17,24,39,.85); backdrop-filter:blur(6px); border-top:1px solid var(--line); padding:10px; display:flex; flex-wrap:wrap; gap:8px; }
+    button{ background:var(--accent); color:#fff; border:none; border-radius:10px; padding:12px 16px; font-weight:700; font-size:14px; cursor:pointer; }
+    button.secondary{ background:#1f2937; color:#e5e7eb; }
+    .output{ white-space:pre-wrap; background:#0b1220; border:1px solid var(--line); border-radius:12px; padding:12px; min-height:280px; }
+    .muted{ color:var(--muted); font-size:12px; }
+    .pill{ display:inline-block; background:#0b2a5f; color:#dbeafe; padding:4px 8px; border-radius:999px; font-size:12px; margin-left:8px; }
+    .toggle{ display:flex; align-items:center; gap:8px; }
+    .supporters{ display:flex; gap:12px; align-items:center; }
+    .cat-grid{ display:grid; grid-template-columns:1fr; gap:10px; }
+    .cat-row{ display:grid; grid-template-columns: 1fr 1fr; gap:8px; }
+    @media (max-width:600px){ .cat-row{ grid-template-columns:1fr; } }
+
+    /* 新增：名称＋数量 行样式 */
+    .rows{ display:grid; grid-template-columns:1fr; gap:8px; margin-top:8px; }
+    .row{ display:grid; grid-template-columns: 1fr 120px auto; gap:8px; align-items:center; }
+    @media (max-width:600px){ .row{ grid-template-columns: 1fr 120px; } .row .del{ grid-column: 1 / -1; } }
+    .del{ background:#7c2d12; }
+    .small-note{ font-size:12px; color:#94a3b8; }
+  </style>
+</head>
+<body>
+<header>
+  <h1>2025年 年末売場応援 報告書ジェネレーター <span class="pill">モバイル安定版・統合版</span></h1>
+  <div class="muted">※ 旧版UIを維持しつつ、新機能（商品名＋数量、時間帯×人数のペア、メーカー統合15社・人数降順・全角数字）を追加。Excel/テキスト両対応。</div>
+</header>
+
+<main>
+  <!-- 基本情報 -->
+  <section class="card">
+    <h2>基本情報</h2>
+    <div class="grid2">
+      <div class="field">
+        <label>応援日</label>
+        <input id="date" type="date">
+        <div class="muted">曜日は自動表示（例：金）。括弧は「（金）」のように自動挿入します。</div>
+      </div>
+      <div class="field">
+        <label>応援者</label>
+        <div class="supporters">
+          <label><input type="checkbox" id="sup_chen"> 陳</label>
+          <label><input type="checkbox" id="sup_li"> 李</label>
+        </div>
+        <div class="muted">※ 複数選択可（同時在店）。「応援日」行の右側に表示します。</div>
+      </div>
+      <div class="field">
+        <label>店舗名</label>
+        <input id="shop" placeholder="例：銀座博品館" value="銀座博品館">
+      </div>
+      <div class="field">
+        <label>売場責任者</label>
+        <input id="manager" placeholder="手動入力">
+      </div>
+      <div class="field">
+        <label>帳合問屋</label>
+        <input id="wholesaler" value="石川玩具">
+      </div>
+      <div class="field">
+        <label>問屋担当者</label>
+        <input id="wholesalerPerson" placeholder="手動入力">
+      </div>
+    </div>
+    <div class="field toggle">
+      <input type="checkbox" id="centerDate"> <label for="centerDate">応援日行を中央寄せ（見た目調整）</label>
+    </div>
+  </section>
+
+  <!-- ① 自社（旧：复选＋5类目） -->
+  <section class="card">
+    <h2>① 特に売れていた商品（自社）</h2>
+    <div class="checkgroup" id="ownProducts">
+      <label><input type="checkbox" value="APキッズカメラ"> APキッズカメラ</label>
+      <label><input type="checkbox" value="APらくがき教室"> APらくがき教室</label>
+      <label><input type="checkbox" value="おおきなよくばりボックス"> おおきなよくばりボックス</label>
+      <label><input type="checkbox" value="APビジーカー"> APビジーカー</label>
+      <label><input type="checkbox" value="にゃんだ"> にゃんだ</label>
+      <label><input type="checkbox" value="わんだ"> わんだ</label>
+    </div>
+    <div class="field">
+      <label>カテゴリ選択（5枠／「/」または「手入力」が選べます）</label>
+      <div class="cat-grid">
+        <div class="cat-row"><select id="cat1"><option>/</option><option>クレーンゲーム</option><option>ボール</option><option>遊具</option><option>粘土</option><option>パッド</option><option>手入力</option></select><input id="cat1_text" placeholder="手入力（cat1が『手入力』の時使用）" style="display:none"></div>
+        <div class="cat-row"><select id="cat2"><option>/</option><option>クレーンゲーム</option><option>ボール</option><option>遊具</option><option>粘土</option><option>パッド</option><option>手入力</option></select><input id="cat2_text" placeholder="手入力（cat2が『手入力』の時使用）" style="display:none"></div>
+        <div class="cat-row"><select id="cat3"><option>/</option><option>クレーンゲーム</option><option>ボール</option><option>遊具</option><option>粘土</option><option>パッド</option><option>手入力</option></select><input id="cat3_text" placeholder="手入力（cat3が『手入力』の時使用）" style="display:none"></div>
+        <div class="cat-row"><select id="cat4"><option>/</option><option>クレーンゲーム</option><option>ボール</option><option>遊具</option><option>粘土</option><option>パッド</option><option>手入力</option></select><input id="cat4_text" placeholder="手入力（cat4が『手入力』の時使用）" style="display:none"></div>
+        <div class="cat-row"><select id="cat5"><option>/</option><option>クレーンゲーム</option><option>ボール</option><option>遊具</option><option>粘土</option><option>パッド</option><option>手入力</option></select><input id="cat5_text" placeholder="手入力（cat5が『手入力』の時使用）" style="display:none"></div>
+      </div>
+    </div>
+
+    <!-- 新增：自社 商品名＋数量（×N個） -->
+    <div class="field">
+      <label>追加行（商品名＋数量）</label>
+      <div id="ownRows" class="rows"></div>
+      <div class="small-note">数量は「×N個」で出力。選択肢：ねんDOシリーズ商品／手入力／／</div>
+      <button id="addOwnRow" class="secondary">＋ 行を追加</button>
+    </div>
+  </section>
+
+  <!-- ② 他社（旧：复选＋5类目） -->
+  <section class="card">
+    <h2>② 特に売れていた商品（他社）</h2>
+    <div class="checkgroup" id="otherProducts">
+      <label><input type="checkbox" value="たまごっちUni（BANDAI）"> たまごっちUni（BANDAI）</label>
+      <label><input type="checkbox" value="ポケモンカードゲーム（The Pokémon Company）"> ポケモンカードゲーム（The Pokémon Company）</label>
+      <label><input type="checkbox" value="ベイブレードX（TAKARA TOMY）"> ベイブレードX（TAKARA TOMY）</label>
+      <label><input type="checkbox" value="リカちゃん（TAKARA TOMY）"> リカちゃん（TAKARA TOMY）</label>
+      <label><input type="checkbox" value="プラレール/トミカ（TAKARA TOMY）"> プラレール/トミカ（TAKARA TOMY）</label>
+      <label><input type="checkbox" value="シルバニアファミリー（EPOCH）"> シルバニアファミリー（EPOCH）</label>
+      <label><input type="checkbox" value="アンパンマンことばずかん（AGATSUMA）"> アンパンマンことばずかん（AGATSUMA）</label>
+      <label><input type="checkbox" value="レゴ（LEGO JAPAN）"> レゴ（LEGO JAPAN）</label>
+      <label><input type="checkbox" value="NERF（Hasbro）"> NERF（Hasbro）</label>
+      <label><input type="checkbox" value="バービー（Mattel）"> バービー（Mattel）</label>
+    </div>
+    <div class="field">
+      <label>カテゴリ選択（5枠／「/」または「手入力」が選べます）</label>
+      <div class="cat-grid">
+        <div class="cat-row"><select id="ocat1"><option>/</option><option>クレーンゲーム</option><option>ボール</option><option>遊具</option><option>粘土</option><option>パッド</option><option>手入力</option></select><input id="ocat1_text" placeholder="手入力（ocat1が『手入力』の時使用）" style="display:none"></div>
+        <div class="cat-row"><select id="ocat2"><option>/</option><option>クレーンゲーム</option><option>ボール</option><option>遊具</option><option>粘土</option><option>パッド</option><option>手入力</option></select><input id="ocat2_text" placeholder="手入力（ocat2が『手入力』の時使用）" style="display:none"></div>
+        <div class="cat-row"><select id="ocat3"><option>/</option><option>クレーンゲーム</option><option>ボール</option><option>遊具</option><option>粘土</option><option>パッド</option><option>手入力</option></select><input id="ocat3_text" placeholder="手入力（ocat3が『手入力』の時使用）" style="display:none"></div>
+        <div class="cat-row"><select id="ocat4"><option>/</option><option>クレーンゲーム</option><option>ボール</option><option>遊具</option><option>粘土</option><option>パッド</option><option>手入力</option></select><input id="ocat4_text" placeholder="手入力（ocat4が『手入力』の時使用）" style="display:none"></div>
+        <div class="cat-row"><select id="ocat5"><option>/</option><option>クレーンゲーム</option><option>ボール</option><option>遊具</option><option>粘土</option><option>パッド</option><option>手入力</option></select><input id="ocat5_text" placeholder="手入力（ocat5が『手入力』の時使用）" style="display:none"></div>
+      </div>
+    </div>
+
+    <!-- 新增：他社 商品名＋数量（×N個） -->
+    <div class="field">
+      <label>追加行（商品名＋数量）</label>
+      <div id="otherRows" class="rows"></div>
+      <div class="small-note">数量は「×N個」で出力。既定3行：IWAYA／バンダイ／AOZORA（売上実績約97,000円）。</div>
+      <button id="addOtherRow" class="secondary">＋ 行を追加</button>
+    </div>
+  </section>
+
+  <!-- ③ ピークの時間帯（旧版のまま） -->
+  <section class="card">
+    <h2>③ ピークの時間帯</h2>
+    <div class="grid3">
+      <div class="field">
+        <label>時間帯①</label>
+        <select id="peak1">
+          <option>/</option><option>10:00–11:00</option><option>11:00–12:00</option><option>12:00–13:00</option><option>13:00–14:00</option><option>14:00–15:00</option><option>15:00–16:00</option><option>16:00–17:00</option><option>17:00–18:00</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>時間帯②</label>
+        <select id="peak2">
+          <option>/</option><option>10:00–11:00</option><option>11:00–12:00</option><option>12:00–13:00</option><option>13:00–14:00</option><option>14:00–15:00</option><option>15:00–16:00</option><option>16:00–17:00</option><option>17:00–18:00</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>時間帯③</label>
+        <select id="peak3">
+          <option>/</option><option>10:00–11:00</option><option>11:00–12:00</option><option>12:00–13:00</option><option>13:00–14:00</option><option>14:00–15:00</option><option>15:00–16:00</option><option>16:00–17:00</option><option>17:00–18:00</option>
+        </select>
+      </div>
+      <div class="muted">時間帯①はデフォルト <strong>10:00–11:00</strong>。各時間帯は「/（該当なし）」も選べます。</div>
+    </div>
+  </section>
+
+  <!-- ④ ピーク時のレジ列人数（配对：時間帯①〜③ × 人数①〜③） -->
+  <section class="card">
+    <h2>④ ピーク時のレジ列人数（おおよそ）</h2>
+    <div class="grid3">
+      <div class="field">
+        <label>人数①（時間帯①とペア）</label>
+        <select id="people1"><option>/</option><option>5</option><option>10</option><option>15</option><option>20</option><option>25</option><option>30</option><option>35</option><option>40</option><option>45</option><option>50</option><option>55</option></select>
+      </div>
+      <div class="field">
+        <label>人数②（時間帯②とペア）</label>
+        <select id="people2"><option>/</option><option>5</option><option>10</option><option>15</option><option>20</option><option>25</option><option>30</option><option>35</option><option>40</option><option>45</option><option>50</option><option>55</option></select>
+      </div>
+      <div class="field">
+        <label>人数③（時間帯③とペア）</label>
+        <select id="people3"><option>/</option><option>5</option><option>10</option><option>15</option><option>20</option><option>25</option><option>30</option><option>35</option><option>40</option><option>45</option><option>50</option><option>55</option></select>
+      </div>
+      <div class="muted">※ 各ペアは「時間帯」と「人数」が両方有効の場合のみ出力（例：14:00–15:00：３名程度）。数字は全角で表示。</div>
+    </div>
+  </section>
+
+  <!-- ⑤ 他応援メーカー（固定15社・人数0〜5・降順、0は末尾） -->
+  <section class="card">
+    <h2>⑤ 他応援メーカー（会社名と人数）</h2>
+    <div id="companies" class="grid2">
+      <!-- 旧10社＋追加5社：合計15社／人数0〜5 -->
+      <div class="field"><label>バンダイ</label><select id="compn_0"><option>0</option><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option></select></div>
+      <div class="field"><label>タカラトミー</label><select id="compn_1"><option>0</option><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option></select></div>
+      <div class="field"><label>セガトイズ</label><select id="compn_2"><option>0</option><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option></select></div>
+      <div class="field"><label>エポック社</label><select id="compn_3"><option>0</option><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option></select></div>
+      <div class="field"><label>メガハウス</label><select id="compn_4"><option>0</option><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option></select></div>
+      <div class="field"><label>アガツマ</label><select id="compn_5"><option>0</option><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option></select></div>
+      <div class="field"><label>マテル・インターナショナル</label><select id="compn_6"><option>0</option><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option></select></div>
+      <div class="field"><label>レゴジャパン</label><select id="compn_7"><option>0</option><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option></select></div>
+      <div class="field"><label>ハピネット</label><select id="compn_8"><option>0</option><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option></select></div>
+      <div class="field"><label>ピープル</label><select id="compn_9"><option>0</option><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option></select></div>
+
+      <!-- 追加5社 -->
+      <div class="field"><label>カワダ</label><select id="compn_10"><option>0</option><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option></select></div>
+      <div class="field"><label>AOZORA社</label><select id="compn_11"><option>0</option><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option></select></div>
+      <div class="field"><label>BRIO</label><select id="compn_12"><option>0</option><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option></select></div>
+      <div class="field"><label>IWAYA</label><select id="compn_13"><option>0</option><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option></select></div>
+      <div class="field"><label>stiefff</label><select id="compn_14"><option>0</option><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option></select></div>
+    </div>
+    <div class="muted">※ 出力時に「人数の降順」で並べ替え、人数0は末尾にまとめて表示します。数字は全角。</div>
+  </section>
+
+  <!-- ⑥ 応援者所感 -->
+  <section class="card">
+    <h2>⑥ 応援者所感</h2>
+    <div class="field">
+      <textarea id="comment" placeholder="自由記入（未入力でも可）"></textarea>
+    </div>
+  </section>
+
+  <!-- 出力 -->
+  <section class="card">
+    <h2>出力プレビュー</h2>
+    <div id="out" class="output"></div>
+  </section>
+
+  <!-- 操作按钮 -->
+  <div class="btns">
+    <button onclick="generate()">生成</button>
+    <button class="secondary" onclick="copyOutput()">コピー（テキスト）</button>
+    <button class="secondary" onclick="downloadTXT()">TXT保存</button>
+    <button class="secondary" onclick="downloadCSV()">Excel用CSV保存</button>
+  </div>
+</main>
+
+<script>
+  const JP_WEEK = ['日','月','火','水','木','金','土'];
+  // 固定15社（旧10＋追加5）
+  const companies = ['バンダイ','タカラトミー','セガトイズ','エポック社','メガハウス','アガツマ','マテル・インターナショナル','レゴジャパン','ハピネット','ピープル','カワダ','AOZORA社','BRIO','IWAYA','stiefff'];
+
+  // ---- ユーティリティ：手入力切替（旧版維持） ----
+  function toggleCatText(n){
+    const sel=document.getElementById('cat'+n);
+    const tx=document.getElementById('cat'+n+'_text');
+    if(sel&&tx){ tx.style.display = (sel.value==='手入力') ? 'block' : 'none'; }
+  }
+  function toggleOtherCatText(n){
+    const sel=document.getElementById('ocat'+n);
+    const tx=document.getElementById('ocat'+n+'_text');
+    if(sel&&tx){ tx.style.display = (sel.value==='手入力') ? 'block' : 'none'; }
+  }
+
+  // ---- 全角数字変換 ----
+  function toZenkakuDigits(str){
+    return String(str).replace(/[0-9]/g, s => String.fromCharCode(s.charCodeAt(0) + 0xFEE0));
+  }
+
+  // ---- 曜日計算 ----
+  function weekdayJP(dateStr){
+    try{ const d = new Date(dateStr+'T00:00:00'); return JP_WEEK[d.getDay()]||''; }catch(e){ return ''; }
+  }
+
+  // ---- 5枠カテゴリ収集（旧版維持） ----
+  function joinCats(prefix){
+    const out=[];
+    for(let i=1;i<=5;i++){
+      const sel=document.getElementById(prefix+i);
+      const val= sel? sel.value : '';
+      if(val && val!=='/'){
+        const txt=document.getElementById(prefix+i+'_text');
+        out.push( val==='手入力' ? ((txt && txt.value.trim()) || '') : val );
+      }
+    }
+    return out.filter(Boolean);
+  }
+
+  // ---- 応援日行（旧版：右側に応援者、中央寄せオプション） ----
+  function dateLine(date, supportersStr){
+    const SP5 = '\u3000'.repeat(5); const SP1='\u3000';
+    const wd = weekdayJP(date);
+    const base = (()=>{
+      if(!date){ return `応援日：${SP5}月${SP5}日${SP1}（\u3000\u3000）`; }
+      const d=new Date(date);
+      const m=(d.getMonth()+1).toString();
+      const day=d.getDate().toString();
+      return `応援日：${SP5}${m}月${SP5}${day}日${SP1}（${wd||''}）`;
+    })();
+    const right = `応援者：${supportersStr||''}`;
+    const tabs = '\t'.repeat(6);
+    const center = document.getElementById('centerDate').checked;
+    if(!center){ return base + tabs + right; }
+    const targetWidth = 30; const visualLen = [...base].length; const pad = Math.max(0, Math.floor((targetWidth - visualLen)/2));
+    const padding = '\u3000'.repeat(pad);
+    return padding + base + padding + tabs + right;
+  }
+
+  // ---- 2列行（旧版維持） ----
+  function twoColsLine(leftLabel, leftVal, rightLabel, rightVal){
+    return `${leftLabel}：${leftVal||''}` + '\t'.repeat(6) + `${rightLabel}：${rightVal||''}`;
+  }
+
+  // ---- 新增：名称＋数量 行（自社/他社共通） ----
+  const OWN_NAME_OPTIONS = ['ねんDOシリーズ商品','手入力','／'];
+  const OTHER_NAME_OPTIONS = [
+    'リモコンでおさんぽキャンキャントイプー（IWAYA）',
+    'たまごっち(バンダイ)',
+    'スノーアットホームシリーズ(AOZORA)(売上実績約 97,000円)',
+    '手入力','／'
+  ];
+  const COUNT_OPTIONS = Array.from({length:20}, (_,i)=> String(i+1)); // 1..20
+
+  function makeNameCountRow(nameOptions){
+    const row = document.createElement('div'); row.className='row';
+    const nameSel = document.createElement('select');
+    nameOptions.forEach(opt=>{ const o=document.createElement('option'); o.value=opt; o.textContent=opt; nameSel.appendChild(o); });
+    const nameInput = document.createElement('input'); nameInput.placeholder='手入力'; nameInput.style.display='none';
+    nameSel.addEventListener('change', ()=>{
+      if(nameSel.value==='手入力'){ nameInput.style.display='block'; } else { nameInput.style.display='none'; nameInput.value=''; }
+    });
+    const cntSel = document.createElement('select');
+    COUNT_OPTIONS.forEach(opt=>{ const o=document.createElement('option'); o.value=opt; o.textContent=opt; cntSel.appendChild(o); });
+    const del = document.createElement('button'); del.className='del'; del.textContent='－ 削除';
+    del.addEventListener('click', ()=> row.remove());
+
+    row.appendChild(nameSel); row.appendChild(nameInput); row.appendChild(cntSel); row.appendChild(del);
+    return row;
+  }
+
+  function collectNameCountRows(container){
+    const items=[];
+    container.querySelectorAll('.row').forEach(row=>{
+      const sels = row.querySelectorAll('select');
+      const nameSel = sels[0], cntSel = sels[1];
+      let name = nameSel.value;
+      if(name==='／') return;
+      if(name==='手入力'){
+        const input = row.querySelector('input'); if(!input || !input.value.trim()) return;
+        name = input.value.trim();
+      }
+      const cnt = cntSel.value;
+      if(!cnt) return;
+      items.push(`${name} × ${toZenkakuDigits(cnt)}個`);
+    });
+    return items;
+  }
+
+  // ---- ③＋④ ペア出力（最多3対／数字全角） ----
+  function collectPeakPairs(){
+    const pairs=[];
+    for(let i=1;i<=3;i++){
+      const t = document.getElementById('peak'+i).value;
+      const p = document.getElementById('people'+i).value;
+      if(t && t!=='/' && p && p!=='/'){
+        pairs.push(`${t}：${toZenkakuDigits(p)}名程度`);
+      }
+    }
+    return pairs;
+  }
+
+  // ---- ⑤ メーカー出力（人数降順、0は末尾／数字全角） ----
+  function collectCompanies(){
+    const arr = companies.map((name, idx)=>{
+      const val = document.getElementById('compn_'+idx)?.value || '0';
+      const n = parseInt(val, 10) || 0;
+      return { name, n };
+    });
+    const nonZero = arr.filter(x=> x.n>0).sort((a,b)=> b.n - a.n);
+    const zero = arr.filter(x=> x.n===0);
+    return [...nonZero, ...zero].map(x=> `${x.name}：${toZenkakuDigits(x.n)}名`);
+  }
+
+  // ---- 生成 ----
+  function generate(){
+    try{
+      const date = document.getElementById('date').value;
+      const supporters=[]; if(document.getElementById('sup_chen').checked) supporters.push('陳'); if(document.getElementById('sup_li').checked) supporters.push('李');
+      const supportersStr = supporters.join('、');
+
+      const shop=document.getElementById('shop').value;
+      const manager=document.getElementById('manager').value;
+      const wholesaler=document.getElementById('wholesaler').value;
+      const wholesalerPerson=document.getElementById('wholesalerPerson').value;
+
+      const ownChecks = Array.from(document.querySelectorAll('#ownProducts input[type=checkbox]:checked')).map(x=>x.value);
+      const ownCats = joinCats('cat');
+      const ownRows = collectNameCountRows(document.getElementById('ownRows'));
+      const own = [...ownChecks, ...ownCats, ...ownRows].join('、');
+
+      const otherChecks = Array.from(document.querySelectorAll('#otherProducts input[type=checkbox]:checked')).map(x=>x.value);
+      const otherCats = joinCats('ocat');
+      const otherRows = collectNameCountRows(document.getElementById('otherRows'));
+      const other = [...otherChecks, ...otherCats, ...otherRows].join('、');
+
+      const p1=document.getElementById('peak1').value; const p2=document.getElementById('peak2').value; const p3=document.getElementById('peak3').value;
+      const peaks=[p1,p2,p3].filter(x=>x && x!=='/').join('、');
+
+      const peakPairs = collectPeakPairs(); // 最多3対
+
+      const compsOut = collectCompanies(); // 降順＋0末尾
+
+      const header = `2025年\u3000年末売場応援報告書`;
+      const line1 = dateLine(date, supportersStr);
+      const line2 = twoColsLine('店舗名', shop, '売場責任者', manager);
+      const line3 = twoColsLine('帳合問屋', wholesaler, '問屋担当者', wholesalerPerson);
+
+      let body = header + '\n' + line1 + '\n\n' + line2 + '\n\n' + line3 + '\n\n\n';
+      body += '①特に売れていた商品（自社）\n' + (own||'') + '\n';
+      body += '②特に売れていた商品（他社）\n' + (other||'') + '\n';
+      // ③は旧版のまま単独表示
+      body += '③ピークの時間帯\n' + (peaks||'') + '\n';
+      // ④はペア出力（最多3対）
+      body += '④ピーク時のレジ列人数（おおよそ）\n' + (peakPairs.length? peakPairs.join('、') : '') + '\n';
+      body += '⑤他応援メーカー\n' + (compsOut.length? compsOut.join('、') : '') + '\n';
+      const comment=document.getElementById('comment').value.trim();
+      body += '⑥応援者所感\n' + (comment||'');
+
+      document.getElementById('out').textContent = body;
+    }catch(err){ alert('生成中にエラーが発生しました：'+err); }
+  }
+
+  // ---- コピー／保存（旧版維持） ----
+  function copyOutput(){
+    const text=document.getElementById('out').textContent;
+    if(navigator.clipboard){
+      navigator.clipboard.writeText(text).then(()=> toast('コピーしました')).catch(()=> fallbackCopy(text));
+    } else { fallbackCopy(text); }
+  }
+  function fallbackCopy(text){
+    const ta=document.createElement('textarea'); ta.value=text; document.body.appendChild(ta); ta.select(); document.execCommand('copy'); ta.remove(); toast('コピーしました');
+  }
+  function downloadTXT(){
+    const text=document.getElementById('out').textContent;
+    const blob=new Blob([text],{type:'text/plain;charset=utf-8'});
+    const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='bog報告用.txt'; a.click();
+    setTimeout(()=>URL.revokeObjectURL(a.href),1000);
+  }
+  function downloadCSV(){
+    const text=document.getElementById('out').textContent.replace(/"/g,'""');
+    const csv='text\n"'+text+'"\n'; // 単一セルに全文
+    const blob=new Blob([csv],{type:'text/csv;charset=utf-8;'});
+    const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='bog報告用.csv'; a.click();
+    setTimeout(()=>URL.revokeObjectURL(a.href),1000);
+  }
+  function toast(msg){
+    const t=document.createElement('div'); t.textContent=msg;
+    t.style.position='fixed'; t.style.bottom='20px'; t.style.left='50%'; t.style.transform='translateX(-50%)';
+    t.style.background='#111827'; t.style.border='1px solid #1f2937'; t.style.color='#e5e7eb';
+    t.style.padding='10px 14px'; t.style.borderRadius='8px'; t.style.boxShadow='0 6px 24px rgba(0,0,0,.35)';
+    t.style.zIndex='9999'; document.body.appendChild(t); setTimeout(()=>t.remove(), 1800);
+  }
+
+  // ---- 初期化 ----
+  document.addEventListener('DOMContentLoaded', ()=>{
+    // 応援日 初期値
+    try{
+      const d=document.getElementById('date'); if(d && !d.value){ d.value = new Date().toISOString().substring(0,10); }
+    }catch(_){}
+    // 手入力 切替
+    ['1','2','3','4','5'].forEach(n=>{
+      const el=document.getElementById('cat'+n); if(el){ el.addEventListener('change', () => toggleCatText(n)); }
+      const eel=document.getElementById('ocat'+n); if(eel){ eel.addEventListener('change', () => toggleOtherCatText(n)); }
+    });
+    // ③ デフォルト：時間帯① = 10:00–11:00
+    const p1=document.getElementById('peak1'); if(p1) p1.value='10:00–11:00';
+
+    // 新增：自社 追加行（デフォルト1行：ねんDOシリーズ商品 × 1個）
+    const ownBox = document.getElementById('ownRows');
+    const ownAdd = document.getElementById('addOwnRow');
+    function addOwn(){ ownBox.appendChild(makeNameCountRow(OWN_NAME_OPTIONS)); }
+    ownAdd.addEventListener('click', addOwn);
+    addOwn();
+    // 自社デフォルト値設定
+    const firstOwnRow = ownBox.querySelector('.row');
+    if(firstOwnRow){
+      const selName = firstOwnRow.querySelectorAll('select')[0];
+      const selCnt = firstOwnRow.querySelectorAll('select')[1];
+      selName.value = 'ねんDOシリーズ商品';
+      selCnt.value = '1';
+    }
+
+    // 新增：他社 追加行（デフォルト3行：指定3商品 × 1個）
+    const otherBox = document.getElementById('otherRows');
+    const otherAdd = document.getElementById('addOtherRow');
+    function addOther(){ otherBox.appendChild(makeNameCountRow(OTHER_NAME_OPTIONS)); }
+    otherAdd.addEventListener('click', addOther);
+    addOther(); addOther(); addOther();
+    const otherRows = otherBox.querySelectorAll('.row');
+    const presets = [
+      'リモコンでおさんぽキャンキャントイプー（IWAYA）',
+      'たまごっち(バンダイ)',
+      'スノーアットホームシリーズ(AOZORA)(売上実績約 97,000円)'
+    ];
+    otherRows.forEach((row, idx)=>{
+      const selName = row.querySelectorAll('select')[0];
+      const selCnt = row.querySelectorAll('select')[1];
+      selName.value = presets[idx] || '／'; selCnt.value = '1';
+    });
+  });
+</script>
+</body>
+</html>
